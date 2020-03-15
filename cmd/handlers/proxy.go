@@ -1,15 +1,18 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/rs/zerolog"
 	"io"
+	"io/ioutil"
 	"net/http"
 )
 
 type Proxy struct {
-	Client *http.Client
-	Log    *zerolog.Logger
+	Client    *http.Client
+	Log       *zerolog.Logger
+	MyReqList *MyRequestList
 }
 
 func (h *Proxy) Proxy(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +20,15 @@ func (h *Proxy) Proxy(w http.ResponseWriter, r *http.Request) {
 		h.Log.Info().Msg("https")
 		return
 	}
+	bodyByte, _ := ioutil.ReadAll(r.Body)
+	newRequest := MyRequest{
+		URL:            r.URL.String(),
+		RequestHeaders: r.Header.Clone(),
+		RequestBody:    bodyByte,
+		Method:         r.Method,
+	}
+	h.MyReqList.AddRequest(newRequest)
+	r.Write(bytes.NewBuffer(bodyByte))
 	resp, err := http.DefaultTransport.RoundTrip(r)
 	if err != nil {
 		h.Log.Warn().Msg(err.Error())
@@ -31,10 +43,10 @@ func (h *Proxy) Proxy(w http.ResponseWriter, r *http.Request) {
 	h.Log.Info().Str("Request", info).Msg("Success")
 }
 
-func copyHeader(res, src http.Header) {
-	for key, values := range src {
+func copyHeader(copyTo, copyFrom http.Header) {
+	for key, values := range copyFrom {
 		for _, value := range values {
-			res.Add(key, value)
+			copyTo.Add(key, value)
 		}
 	}
 }

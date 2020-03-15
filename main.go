@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 const (
 	httpAddr               = ":8080"
 	httpsAddr              = ":8081"
-	historyAddr            = "8090"
+	historyAddr            = ":8090"
 	certPath               = "cert.pem"
 	keyPath                = "key.pem"
 	serverReadWriteTimeout = 15 * time.Second
@@ -38,12 +39,16 @@ func main() {
 			RootCAs: certs,
 		},
 	}*/
-
+	var mu sync.Mutex
+	reqList := handlers.MyRequestList{
+		Requests: make([]handlers.MyRequest, 0),
+		ReqMu:    &mu,
+	}
 	client := http.Client{
 		Timeout: clientReadWriteTimeout,
 		//Transport: tr,
 	}
-	proxy := handlers.Proxy{Client: &client, Log: &log,}
+	proxy := handlers.Proxy{Client: &client, Log: &log, MyReqList: &reqList}
 
 	httpAPI := &http.Server{
 		Addr:        httpAddr,
@@ -66,7 +71,7 @@ func main() {
 
 	historyAPI := &http.Server{
 		Addr:        historyAddr,
-		Handler:     handlers.HistoryRouter(&log),
+		Handler:     handlers.HistoryRouter(&log, &reqList, &proxy),
 		ReadTimeout: serverReadWriteTimeout,
 	}
 
