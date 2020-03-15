@@ -18,7 +18,7 @@ const (
 	httpsAddr              = ":8081"
 	historyAddr            = ":8090"
 	certPath               = "cert.pem"
-	keyPath                = "key.pem"
+	keyPath                = "key.key"
 	serverReadWriteTimeout = 15 * time.Second
 	clientReadWriteTimeout = 10 * time.Second
 )
@@ -60,7 +60,7 @@ func main() {
 		Addr: httpsAddr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodConnect {
-				proxy.Proxy(w, r)
+				proxy.ProxyConnection(w, r)
 			} else {
 				proxy.Proxy(w, r)
 			}
